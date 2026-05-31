@@ -182,23 +182,21 @@ local function create_history_gui(player, entity)
     local history = storage.machine_history and storage.machine_history[entity.unit_number]
     local current_total = entity.products_finished or 0
     
+    -- Si aucun historique (pas de mise à niveau passée), on n'affiche absolument pas le panneau
+    if not history or #history == 0 then
+        if frame then frame.destroy() end
+        return
+    end
+    
     -- Calcul de la production cumulée précédente
     local sum_previous = 0
-    if history then
-        for _, entry in ipairs(history) do
-            sum_previous = sum_previous + entry.products
-        end
+    for _, entry in ipairs(history) do
+        sum_previous = sum_previous + entry.products
     end
     
     -- Production spécifique de la machine active
     local current_products = current_total - sum_previous
     if current_products < 0 then current_products = 0 end
-    
-    -- Si aucun historique et aucune production sur la machine active, on n'affiche rien (on détruit si présent)
-    if (not history or #history == 0) and current_products == 0 then
-        if frame then frame.destroy() end
-        return
-    end
     
     -- Détermination du type de GUI à ancrer
     local gui_type
@@ -246,21 +244,19 @@ local function create_history_gui(player, entity)
     content_frame.style.minimal_width = 240
     
     -- Liste des paliers précédents (historiques)
-    if history then
-        for _, entry in ipairs(history) do
-            local row = content_frame.add{type = "flow", direction = "horizontal"}
-            row.style.vertical_align = "center"
-            
-            row.add{
-                type = "label",
-                caption = entry.name
-            }
-            row.add{
-                type = "label",
-                caption = " : " .. format_number(entry.products),
-                style = "bold_label"
-            }
-        end
+    for _, entry in ipairs(history) do
+        local row = content_frame.add{type = "flow", direction = "horizontal"}
+        row.style.vertical_align = "center"
+        
+        row.add{
+            type = "label",
+            caption = entry.name
+        }
+        row.add{
+            type = "label",
+            caption = " : " .. format_number(entry.products),
+            style = "bold_label"
+        }
     end
     
     -- Palier en cours d'utilisation (actif)
