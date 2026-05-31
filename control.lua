@@ -226,8 +226,7 @@ local function create_history_gui(player, entity)
             
             row.add{
                 type = "label",
-                caption = entry.name,
-                style = "description_label"
+                caption = entry.name
             }
             row.add{
                 type = "label",
@@ -249,8 +248,7 @@ local function create_history_gui(player, entity)
         }
         row.add{
             type = "label",
-            caption = " : " .. format_number(current_products) .. " [actif]",
-            style = "label"
+            caption = " : " .. format_number(current_products) .. " [actif]"
         }
         -- Légère coloration pour faire ressortir la ligne active
         row.children[1].style.font_color = {r = 1, g = 0.74, b = 0.4} -- Orange Factorio
