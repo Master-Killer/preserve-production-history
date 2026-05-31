@@ -2,7 +2,7 @@
 -- PRESERVE PRODUCTION HISTORY ON UPGRADE
 -- ============================================================================
 -- Mod pour Factorio 2.0 (Space Age)
--- Conserve et affiche l'historique complet de production par niveau de machine.
+-- Conserve, cumule et affiche l'historique complet de production par niveau.
 -- ============================================================================
 
 -- Configuration
@@ -68,21 +68,27 @@ local function on_entity_mined(event)
     storage.machine_history = storage.machine_history or {}
     local history = storage.machine_history[unit_number]
     
+    local sum_previous = 0
     if not history then
         history = {}
     else
-        -- Suppression pour éviter les fuites de mémoire si l'entité n'est jamais reposée
+        -- Calcul de la production cumulée des paliers précédents
+        for _, entry in ipairs(history) do
+            sum_previous = sum_previous + entry.products
+        end
+        -- Suppression pour éviter les fuites de mémoire
         storage.machine_history[unit_number] = nil
     end
     
-    -- Lecture ultra-sécurisée du compteur de cycles actuels
-    local success, products = pcall(function() return entity.products_finished end)
+    -- Lecture ultra-sécurisée du compteur cumulé de cycles actuels
+    local success, current_total = pcall(function() return entity.products_finished end)
     
-    if success and products and products > 0 then
-        -- On ajoute la production finale de cette machine à l'historique
+    if success and current_total and current_total > sum_previous then
+        local active_products = current_total - sum_previous
+        -- On ajoute la production réelle de cette machine à l'historique
         table.insert(history, {
             name = entity.localised_name,
-            products = products
+            products = active_products
         })
     end
     
@@ -121,8 +127,17 @@ local function on_entity_built(event)
                 storage.machine_history = storage.machine_history or {}
                 storage.machine_history[unit_number] = stored_history
                 
+                -- Calcul du total cumulé de tous les paliers
+                local total_cumulative = 0
+                for _, entry in ipairs(stored_history) do
+                    total_cumulative = total_cumulative + entry.products
+                end
+                
+                -- Restauration du compteur cumulé directement dans l'entité active
+                pcall(function() entity.products_finished = total_cumulative end)
+                
                 if DEBUG_MODE then
-                    log(string.format("[PPH] Restored history with %d entries to %s (unit %d) at tick %d", #stored_history, entity.name, unit_number, tick))
+                    log(string.format("[PPH] Restored cumulative products %d to %s (unit %d) at tick %d", total_cumulative, entity.name, unit_number, tick))
                 end
             end
             
@@ -163,11 +178,23 @@ local function create_history_gui(player, entity)
     local relative = player.gui.relative
     local frame = relative.pph_production_history_frame
     
-    -- Récupération de l'historique et de l'état actif
+    -- Récupération de l'historique et du total cumulé actif
     local history = storage.machine_history and storage.machine_history[entity.unit_number]
-    local current_products = entity.products_finished or 0
+    local current_total = entity.products_finished or 0
     
-    -- Si aucun historique et aucune production en cours, on n'affiche rien (on détruit si présent)
+    -- Calcul de la production cumulée précédente
+    local sum_previous = 0
+    if history then
+        for _, entry in ipairs(history) do
+            sum_previous = sum_previous + entry.products
+        end
+    end
+    
+    -- Production spécifique de la machine active
+    local current_products = current_total - sum_previous
+    if current_products < 0 then current_products = 0 end
+    
+    -- Si aucun historique et aucune production sur la machine active, on n'affiche rien (on détruit si présent)
     if (not history or #history == 0) and current_products == 0 then
         if frame then frame.destroy() end
         return
@@ -250,9 +277,33 @@ local function create_history_gui(player, entity)
             type = "label",
             caption = " : " .. format_number(current_products) .. " [actif]"
         }
-        -- Légère coloration pour faire ressortir la ligne active
-        row.children[1].style.font_color = {r = 1, g = 0.74, b = 0.4} -- Orange Factorio
+        -- Légère coloration pour faire ressortir la ligne active (Orange Factorio)
+        row.children[1].style.font_color = {r = 1, g = 0.74, b = 0.4}
         row.children[2].style.font_color = {r = 1, g = 0.74, b = 0.4}
+    end
+    
+    -- Total cumulé complet (pour faire le lien parfait avec l'encart officiel)
+    if current_total > 0 then
+        local line = content_frame.add{type = "line", direction = "horizontal"}
+        line.style.top_margin = 5
+        line.style.bottom_margin = 5
+        
+        local row = content_frame.add{type = "flow", direction = "horizontal"}
+        row.style.vertical_align = "center"
+        
+        row.add{
+            type = "label",
+            caption = "Total cumulé",
+            style = "bold_label"
+        }
+        row.add{
+            type = "label",
+            caption = " : " .. format_number(current_total),
+            style = "bold_label"
+        }
+        -- Coloration bleu clair premium
+        row.children[1].style.font_color = {r = 0.4, g = 0.8, b = 1.0}
+        row.children[2].style.font_color = {r = 0.4, g = 0.8, b = 1.0}
     end
 end
 
