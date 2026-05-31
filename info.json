@@ -1,0 +1,9 @@
+{
+  "name": "preserve-production-history",
+  "version": "1.0.0",
+  "title": "Preserve Production History on Upgrade",
+  "author": "VotreNom",
+  "factorio_version": "2.0",
+  "dependencies": ["base >= 2.0.0"],
+  "description": "Conserve l'historique complet de production par palier (MK1, MK2, etc.) lors d'un remplacement rapide ou d'une mise à niveau, et l'affiche dans un panneau d'interface dynamique."
+}
